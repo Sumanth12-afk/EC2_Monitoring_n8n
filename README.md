@@ -166,6 +166,79 @@ Handled via built-in AWS credentials in n8n HTTP Request node (with `aws` auth s
 - Monitor multiple EC2 instances with `SplitInBatches`
 - Add Slack/Discord alerts
 
+
+---
+
+## 🧠 Workflow Node-by-Node Breakdown
+
+### 🔁 1. Schedule Trigger
+- **Purpose**: Automatically triggers the workflow at regular intervals (e.g., every 5 minutes)
+- **Config**:
+  - Trigger mode: Interval
+  - Example: Every 5 minutes
+
+---
+
+### 🌐 2. HTTP Request – GET EC2 CPU
+- **Purpose**: Sends a POST request to AWS CloudWatch to fetch the average CPU utilization for the EC2 instance
+- **Endpoint**: `https://monitoring.us-east-2.amazonaws.com/`
+- **Body Content Type**: `Form Urlencoded`
+- **Important Parameters**:
+  - Action: `GetMetricStatistics`
+  - Version: `2010-08-01`
+  - Namespace: `AWS/EC2`
+  - MetricName: `CPUUtilization`
+  - Dimensions.member.1.Name: `InstanceId`
+  - Dimensions.member.1.Value: `i-00a9364a01d1f6c28`
+  - StartTime: `{{ (new Date(new Date($now).getTime() - 5 * 60000)).toISOString() }}`
+  - EndTime: `{{ (new Date($now)).toISOString() }}`
+  - Period: `300`
+  - Statistics.member.1: `Average`
+
+---
+
+### 🛠 3. Edit Fields
+- **Purpose**: Manually edit or set the `cpu_usage` value (optional step, can be used to override or inject test data)
+- **Field Example**:
+  - Name: `cpu_usage`
+  - Value: `{{ $json["Datapoints"][0]["Average"] || 0 }}`
+
+---
+
+### ✅ 4. IF Node
+- **Purpose**: Checks whether `cpu_usage` is greater than 80
+- **Condition**:
+  - `{{ $json["cpu_usage"] }} is greater than 80`
+
+---
+
+### 📧 5. Gmail (True Path)
+- **Purpose**: Sends an alert email when CPU usage is above the threshold
+- **Subject**: `⚠️ High CPU Usage Alert`
+- **Body**:
+  ```
+  EC2 instance is using {{$json["cpu_usage"]}}% CPU.
+  Please investigate.
+  ```
+
+---
+
+### 📧 6. Gmail1 (False Path)
+- **Purpose**: Sends a notification email when CPU usage is normal
+- **Subject**: `✅ EC2 CPU Normal`
+- **Body**:
+  ```
+  All good! EC2 CPU usage is {{$json["cpu_usage"]}}%.
+  ```
+
+---
+
+### 🧩 Tip:
+- You can rename the Gmail nodes for clarity:  
+  `Gmail - Alert` and `Gmail - OK` or `Gmail - Normal`
+
+
+
 ---
 
 ## 📥 Upload to GitHub
