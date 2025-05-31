@@ -36,18 +36,40 @@ Schedule Trigger
 
 ---
 
-### 2. Import Workflow
+### 2. Run n8n Locally using Docker Desktop
 
-1. Go to your n8n editor
-2. Click on "Import Workflow"
+1. Make sure **Docker Desktop** is installed and running
+2. Pull and run the n8n Docker image:
+
+```bash
+docker run -it --rm   -p 5678:5678   -v ~/.n8n:/home/node/.n8n   n8nio/n8n
+```
+
+3. Open your browser and go to:
+```
+http://localhost:5678/
+```
+
+4. Sign up or log in with your **n8n account**
+5. You’ll receive an **activation key** via email (to the email used in signup)
+6. Enter the key when prompted to activate n8n
+
+You now have a fully functional local n8n editor.
+
+---
+
+### 3. Import Workflow
+
+1. Go to your n8n editor at `http://localhost:5678/`
+2. Click on **Import Workflow**
 3. Upload `EC2_Monitoring.json`
 
 ---
 
-### 3. Configure Nodes
+### 4. Configure Nodes
 
 #### 🔸 HTTP Request Node
-This node sends a signed request to CloudWatch to retrieve average CPU usage over the past 5 minutes.
+Sends a signed request to CloudWatch to retrieve average CPU usage over the past 5 minutes.
 
 Key parameters:
 - `StartTime`: `{{ (new Date(new Date($now).getTime() - 5 * 60000)).toISOString() }}`
@@ -81,6 +103,45 @@ Compares `cpu_usage` to 80.
 8. In n8n:
    - Go to **Credentials > Gmail OAuth2**
    - Enter Client ID, Secret, and do OAuth flow
+
+
+---
+
+### 🛰️ HTTP Request Node Configuration (GET EC2 CPU Metrics)
+
+This node makes a signed API call to AWS CloudWatch to fetch the average CPU utilization for a specific EC2 instance over the last 5 minutes.
+
+**Node Type:** HTTP Request  
+**Authentication:** AWS (using Access Key & Secret)
+
+**Request Method:** `POST`  
+**URL:** `https://monitoring.<region>.amazonaws.com/`  
+Example: `https://monitoring.us-east-2.amazonaws.com/`
+
+**Body Content Type:** `Form Urlencoded`  
+**Specify Body:** ✅ Yes (Use Fields Below)
+
+---
+
+#### 🧾 Body Parameters
+
+| Name                             | Value                                                                 |
+|----------------------------------|------------------------------------------------------------------------|
+| Action                           | GetMetricStatistics                                                   |
+| Version                          | 2010-08-01                                                            |
+| Namespace                        | AWS/EC2                                                               |
+| MetricName                       | CPUUtilization                                                        |
+| Dimensions.member.1.Name         | InstanceId                                                            |
+| Dimensions.member.1.Value        | `i-00a9364a01d1f6c28` *(Replace with your EC2 Instance ID)*            |
+| StartTime                        | `{{ (new Date(new Date($now).getTime() - 5 * 60000)).toISOString() }}` |
+| EndTime                          | `{{ (new Date($now)).toISOString() }}`                               |
+| Period                           | 300 *(5 minutes)*                                                    |
+| Statistics.member.1              | Average                                                               |
+
+---
+
+⏱️ This request calculates average CPU usage over the last 5 minutes and returns data for further evaluation in the workflow.
+
 
 ---
 
