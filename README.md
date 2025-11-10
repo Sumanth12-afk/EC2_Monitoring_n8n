@@ -159,7 +159,57 @@ Example: `https://monitoring.us-east-2.amazonaws.com/`
 Handled via built-in AWS credentials in n8n HTTP Request node (with `aws` auth selected)
 
 ---
+## 🧱 Challenges & How I Retrieved the Workflow
 
+During maintenance of multiple n8n containers, I accidentally lost my EC2 Monitoring workflow. The `.json` export was missing from the repo, and re-import attempts failed.  
+
+Here’s how I recovered it step-by-step using Docker and SQLite inspection:
+
+1. **Found all n8n containers**
+   ```bash
+   docker ps -a --filter "ancestor=n8nio/n8n"
+Found these:
+
+objective_hugle
+
+n8n
+
+hungry_haslett
+
+Identified the correct container
+The hungry_haslett container was the one I used for EC2 Monitoring, but later I found a stopped container c1b1c59458e1 (n8n) with my data.
+
+Copied internal .n8n folder
+
+bash
+Copy code
+docker cp c1b1c59458e1:/home/node/.n8n C:\Users\nalla\Desktop\n8n_backup_c1b1
+Explored the database
+
+bash
+Copy code
+sqlite3 database.sqlite ".tables"
+sqlite3 database.sqlite "SELECT id, name FROM workflow_entity;"
+Found:
+
+upxMulFhZ7Ofz6f0 | EC2 Monitoring
+
+Exported the workflow JSON
+
+bash
+Copy code
+sqlite3 database.sqlite "SELECT json_object('id', id, 'name', name, 'active', active, 'nodes', nodes, 'connections', connections, 'settings', settings, 'staticData', staticData, 'pinData', pinData, 'meta', meta) FROM workflow_entity WHERE id='upxMulFhZ7Ofz6f0';" > EC2_Monitoring_Workflow.json
+Formatted it
+
+bash
+Copy code
+Get-Content EC2_Monitoring_Workflow.json | ConvertFrom-Json | ConvertTo-Json -Depth 10 | Out-File EC2_Monitoring_Workflow_pretty.json
+✅ Re-imported the workflow via “Import from File” in n8n, and it worked perfectly.
+
+This recovery taught me the value of Docker volume persistence and routine workflow exports — a solid DevOps troubleshooting experience.
+
+
+---
 ## 💡 Ideas for Improvement
 
 - Add Google Sheets logging
