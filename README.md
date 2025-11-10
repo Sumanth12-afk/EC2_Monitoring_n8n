@@ -165,7 +165,7 @@ During maintenance of multiple n8n containers, I accidentally lost my EC2 Monito
 
 Here’s how I recovered it step-by-step using Docker and SQLite inspection.
 
--🧩 1. Found all n8n containers
+- 🧩 1. Found all n8n containers
 
     Used the command docker ps -a --filter "ancestor=n8nio/n8n" to list all containers.
 
@@ -177,16 +177,16 @@ Here’s how I recovered it step-by-step using Docker and SQLite inspection.
 
     hungry_haslett
 
--🧩 2. Identified the correct container
+- 🧩 2. Identified the correct container
 
     The hungry_haslett container was the one originally used for EC2 Monitoring, but later I found a stopped container c1b1c59458e1 (n8n) that contained the workflow data.
 
--🧩 3. Copied the internal .n8n folder
+- 🧩 3. Copied the internal .n8n folder
 
     Copied the data folder from the container to the local system using
     docker cp c1b1c59458e1:/home/node/.n8n C:\Users\nalla\Desktop\n8n_backup_c1b1.
 
--🧩 4. Explored the database
+- 🧩 4. Explored the database
 
     Opened the SQLite database inside the backup and viewed all workflows using
     sqlite3 database.sqlite ".tables" and
@@ -195,17 +195,17 @@ Here’s how I recovered it step-by-step using Docker and SQLite inspection.
     Found:
     upxMulFhZ7Ofz6f0 | EC2 Monitoring
 
--🧩 5. Exported the workflow JSON
+- 🧩5. Exported the workflow JSON
 
     Extracted the workflow record from the database using
     sqlite3 database.sqlite "SELECT json_object('id', id, 'name', name, 'active', active, 'nodes', nodes, 'connections', connections, 'settings', settings, 'staticData',     staticData, 'pinData', pinData, 'meta', meta) FROM workflow_entity WHERE id='upxMulFhZ7Ofz6f0';" > EC2_Monitoring_Workflow.json.
 
--🧩 6. Formatted the JSON file
+- 🧩 6. Formatted the JSON file
 
     Converted and formatted the JSON file for readability using PowerShell:
     Get-Content EC2_Monitoring_Workflow.json | ConvertFrom-Json | ConvertTo-Json -Depth 10 | Out-File EC2_Monitoring_Workflow_pretty.json.
 
--✅ 7. Re-imported into n8n
+- ✅ 7. Re-imported into n8n
 
     Imported the formatted JSON file back into n8n using Workflows → Import from File, and the workflow restored successfully.
 
