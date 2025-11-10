@@ -161,14 +161,15 @@ Handled via built-in AWS credentials in n8n HTTP Request node (with `aws` auth s
 ---
 ## 🧱 Challenges & How I Retrieved the Workflow
 
-During maintenance of multiple n8n containers, I accidentally lost my EC2 Monitoring workflow. The `.json` export was missing from the repo, and re-import attempts failed.  
+During maintenance of multiple n8n containers, I accidentally lost my EC2 Monitoring workflow. The .json export was missing from the repository, and re-import attempts failed.
 
-Here’s how I recovered it step-by-step using Docker and SQLite inspection:
+Here’s how I recovered it step-by-step using Docker and SQLite inspection.
 
-1. **Found all n8n containers**
-   ```bash
-   docker ps -a --filter "ancestor=n8nio/n8n"
-Found these:
+🧩 1. Found all n8n containers
+
+Used the command docker ps -a --filter "ancestor=n8nio/n8n" to list all containers.
+
+Found:
 
 objective_hugle
 
@@ -176,38 +177,42 @@ n8n
 
 hungry_haslett
 
-Identified the correct container
-The hungry_haslett container was the one I used for EC2 Monitoring, but later I found a stopped container c1b1c59458e1 (n8n) with my data.
+🧩 2. Identified the correct container
 
-Copied internal .n8n folder
+The hungry_haslett container was the one originally used for EC2 Monitoring, but later I found a stopped container c1b1c59458e1 (n8n) that contained the workflow data.
 
-bash
-Copy code
-docker cp c1b1c59458e1:/home/node/.n8n C:\Users\nalla\Desktop\n8n_backup_c1b1
-Explored the database
+🧩 3. Copied the internal .n8n folder
 
-bash
-Copy code
-sqlite3 database.sqlite ".tables"
-sqlite3 database.sqlite "SELECT id, name FROM workflow_entity;"
+Copied the data folder from the container to the local system using
+docker cp c1b1c59458e1:/home/node/.n8n C:\Users\nalla\Desktop\n8n_backup_c1b1.
+
+🧩 4. Explored the database
+
+Opened the SQLite database inside the backup and viewed all workflows using
+sqlite3 database.sqlite ".tables" and
+sqlite3 database.sqlite "SELECT id, name FROM workflow_entity;".
+
 Found:
-
 upxMulFhZ7Ofz6f0 | EC2 Monitoring
 
-Exported the workflow JSON
+🧩 5. Exported the workflow JSON
 
-bash
-Copy code
-sqlite3 database.sqlite "SELECT json_object('id', id, 'name', name, 'active', active, 'nodes', nodes, 'connections', connections, 'settings', settings, 'staticData', staticData, 'pinData', pinData, 'meta', meta) FROM workflow_entity WHERE id='upxMulFhZ7Ofz6f0';" > EC2_Monitoring_Workflow.json
-Formatted it
+Extracted the workflow record from the database using
+sqlite3 database.sqlite "SELECT json_object('id', id, 'name', name, 'active', active, 'nodes', nodes, 'connections', connections, 'settings', settings, 'staticData', staticData, 'pinData', pinData, 'meta', meta) FROM workflow_entity WHERE id='upxMulFhZ7Ofz6f0';" > EC2_Monitoring_Workflow.json.
 
-bash
-Copy code
-Get-Content EC2_Monitoring_Workflow.json | ConvertFrom-Json | ConvertTo-Json -Depth 10 | Out-File EC2_Monitoring_Workflow_pretty.json
-✅ Re-imported the workflow via “Import from File” in n8n, and it worked perfectly.
+🧩 6. Formatted the JSON file
 
-This recovery taught me the value of Docker volume persistence and routine workflow exports — a solid DevOps troubleshooting experience.
+Converted and formatted the JSON file for readability using PowerShell:
+Get-Content EC2_Monitoring_Workflow.json | ConvertFrom-Json | ConvertTo-Json -Depth 10 | Out-File EC2_Monitoring_Workflow_pretty.json.
 
+✅ 7. Re-imported into n8n
+
+Imported the formatted JSON file back into n8n using Workflows → Import from File, and the workflow restored successfully.
+
+🧠 Lesson Learned
+
+This recovery reinforced the importance of Docker volume persistence and routine workflow exports.
+It turned into a valuable DevOps troubleshooting experience combining Docker, SQLite, and workflow recovery techniques.
 
 ---
 ## 💡 Ideas for Improvement
